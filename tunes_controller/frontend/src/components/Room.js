@@ -11,6 +11,7 @@ export default class extends Component {
             guestCanPause: false,
             isHost: false,
             showSettings: false,
+            spotifyAuthenticated: false
         };
         this.roomCode = this.props.match.params.roomCode;        
         this.leaveRoomPressed = this.leaveRoomPressed.bind(this);
@@ -18,9 +19,29 @@ export default class extends Component {
         this.renderSettings = this.renderSettings.bind(this);
         this.renderSettingsButton = this.renderSettingsButton.bind(this);
         this.getRoomDetails = this.getRoomDetails.bind(this);
+        this.authenticateSpotify = this.authenticateSpotify.bind(this);
         this.getRoomDetails();
     }
 
+    authenticateSpotify() {
+        console.log("hello");
+        fetch('/spotify/is-authenticated')
+        .then((response) => response.json())
+        .then ((data) => {
+            this.setState( {
+                spotifyAuthenticated: data.status
+            });
+            if(!data.status){
+                fetch('/spotify/get-auth-url')
+                .then((response) => response.json())
+                .then((data) => {
+                    // This redirects to the spotify authorization page and then redirects us to the spotify callback and then we are redirecteded back to homepage
+                    window.location.replace(data.url)
+                })
+            }
+        })
+
+    }
     getRoomDetails() {
         fetch('/api/get-room' + '?code=' + this.roomCode).then((response)=> {
             if (!response.ok){
@@ -35,6 +56,11 @@ export default class extends Component {
                 guestCanPause: data.guest_can_pause,
                 isHost: data.is_host,
             });
+            console.log('Inside getRoom', this.isHost)
+
+            if(this.state.isHost){
+                this.authenticateSpotify()
+            }
         });
     }
 
