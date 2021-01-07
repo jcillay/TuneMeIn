@@ -1,8 +1,11 @@
-from django.shortcuts import render
+from typing import type_check_only
+from django.shortcuts import redirect, render
 from .credentials import REDIRECT_URI, CLIENT_ID, CLIENT_SECRET
 from rest_framework.views import APIView
-from requests import Request, post, status
+from requests import Request, post
+from rest_framework import status
 from rest_framework.response import Response
+from .util import update_or_create_user_tokens
 
 # Create your views here.
 
@@ -19,8 +22,12 @@ class AUTHURL(APIView):
 
         return Response({'url': url}, status=status.HTTP_200_OK)
         
-        
-def spotify_callback(request, format=None):
+# # This function is what stores the tokens in a databse
+# The function above is what gets those functions and authorizes them and then 
+# it is stored here. We call the function imported from util.py because that is what 
+# either creates or updates the token
+
+def spotify_callback(self, request, format=None):
     # Authenticates user and checks if there is an error
     code = request.GET.get('code')
     error = request.GET.get('error')
@@ -28,7 +35,7 @@ def spotify_callback(request, format=None):
     response = post('https://accounts.spotify.com/api/token', data={
         'grant_type' :'authorization_code',
         'code' : code,
-        'redirect_uri' :REDIRECT_URI,
+        'redirect_uri' : REDIRECT_URI,
         'client_id': CLIENT_ID,
         'client_secret' : CLIENT_SECRET
     }).json()
@@ -41,9 +48,12 @@ def spotify_callback(request, format=None):
     expires_in = response.get('expires_in')
     error = response.get('error')
 
-
-
-
+    if not self.request.session.exists(self.request.session.session_key):
+            self.request.session.create()
+    session_id = self.request.session.session_key
+    update_or_create_user_tokens(session_id, access_token, token_type, expires_in, refresh_token)
+    # frontend: Will make it 
+    return redirect('frontend:')
 
 
 
